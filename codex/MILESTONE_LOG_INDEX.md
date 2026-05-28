@@ -11,6 +11,7 @@ This project keeps an implementation log for each milestone in the `codex/` dire
 - [Milestone 5 - Queue System](./MILESTONE_05_LOG.md)
 - [Milestone 6 - Playlists](./MILESTONE_06_LOG.md)
 - [Milestone 7 - Google OAuth](./MILESTONE_07_LOG.md)
+- [Milestone 8 - API Layer](./MILESTONE_08_LOG.md)
 
 ## Convention
 

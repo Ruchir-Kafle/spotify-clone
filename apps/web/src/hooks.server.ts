@@ -1,5 +1,5 @@
 import { handle as authHandle } from './auth';
-import { redirect, type Handle } from '@sveltejs/kit';
+import { json, redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 
 const publicPrefixes = ['/auth', '/signin', '/health'];
@@ -15,6 +15,10 @@ const authorizationHandle: Handle = async ({ event, resolve }) => {
 	const session = await event.locals.auth();
 
 	if (!session?.user) {
+		if (isApiPath(pathname)) {
+			return json({ error: 'Authentication required.' }, { status: 401 });
+		}
+
 		throw redirect(303, `/signin?callbackUrl=${encodeURIComponent(pathname + event.url.search)}`);
 	}
 
@@ -31,4 +35,8 @@ function isPublicPath(pathname: string) {
 
 function isSvelteKitAsset(pathname: string) {
 	return pathname.startsWith('/_app/') || pathname.startsWith('/@') || pathname.includes('/@fs/');
+}
+
+function isApiPath(pathname: string) {
+	return pathname === '/api' || pathname.startsWith('/api/');
 }
