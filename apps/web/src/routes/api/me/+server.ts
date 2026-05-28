@@ -5,6 +5,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 	const session = await locals.auth();
 
 	return json({
-		user: session?.user ?? null
+		user: locals.mobileUser ?? session?.user ?? null
 	});
 };

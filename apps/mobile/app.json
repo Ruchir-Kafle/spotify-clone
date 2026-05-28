@@ -1,0 +1,24 @@
+{
+	"expo": {
+		"name": "Music Server",
+		"slug": "music-server",
+		"scheme": "musicserver",
+		"version": "0.0.1",
+		"orientation": "portrait",
+		"userInterfaceStyle": "dark",
+		"splash": {
+			"backgroundColor": "#09090b"
+		},
+		"assetBundlePatterns": ["**/*"],
+		"ios": {
+			"supportsTablet": true,
+			"bundleIdentifier": "local.musicserver.mobile",
+			"infoPlist": {
+				"UIBackgroundModes": ["audio"]
+			}
+		},
+		"android": {
+			"package": "local.musicserver.mobile"
+		}
+	}
+}

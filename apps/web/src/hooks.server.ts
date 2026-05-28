@@ -1,4 +1,5 @@
 import { handle as authHandle } from './auth';
+import { authenticateMobileBearerToken } from '$lib/server/mobile-auth';
 import { json, redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 
@@ -13,8 +14,15 @@ const authorizationHandle: Handle = async ({ event, resolve }) => {
 	}
 
 	const session = await event.locals.auth();
+	const mobileUser = isApiPath(pathname)
+		? authenticateMobileBearerToken(event.request.headers.get('authorization'))
+		: undefined;
 
-	if (!session?.user) {
+	if (mobileUser) {
+		event.locals.mobileUser = mobileUser;
+	}
+
+	if (!session?.user && !mobileUser) {
 		if (isApiPath(pathname)) {
 			return json({ error: 'Authentication required.' }, { status: 401 });
 		}

@@ -13,6 +13,7 @@ This project keeps an implementation log for each milestone in the `codex/` dire
 - [Milestone 7 - Google OAuth](./MILESTONE_07_LOG.md)
 - [Milestone 8 - API Layer](./MILESTONE_08_LOG.md)
 - [Milestone 9 - Tailscale Deployment](./MILESTONE_09_LOG.md)
+- [Milestone 10 - React Native App](./MILESTONE_10_LOG.md)
 
 ## Convention
 
