@@ -8,6 +8,7 @@ This project keeps an implementation log for each milestone in the `codex/` dire
 - [Milestone 2 - Music Scanner](./MILESTONE_02_LOG.md)
 - [Milestone 3 - Library UI](./MILESTONE_03_LOG.md)
 - [Milestone 4 - Playback](./MILESTONE_04_LOG.md)
+- [Milestone 5 - Queue System](./MILESTONE_05_LOG.md)
 
 ## Convention
 
