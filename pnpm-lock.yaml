@@ -16,6 +16,10 @@ importers:
         version: 6.0.3
 
   apps/web:
+    dependencies:
+      '@music/database':
+        specifier: workspace:*
+        version: link:../../packages/database
     devDependencies:
       '@eslint/compat':
         specifier: ^2.0.4
