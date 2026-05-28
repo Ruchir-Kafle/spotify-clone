@@ -12,6 +12,7 @@ import {
 import TrackPlayer, {
 	AppKilledPlaybackBehavior,
 	Capability,
+	Event,
 	State,
 	usePlaybackState,
 	useProgress
@@ -22,7 +23,8 @@ import {
 	fetchPlaylist,
 	fetchPlaylists,
 	fetchQueue,
-	fetchSongs
+	fetchSongs,
+	updateQueue
 } from './src/services/api';
 import {
 	clearStoredSession,
@@ -40,6 +42,8 @@ export default function App() {
 	const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | undefined>();
 	const [tab, setTab] = useState<Tab>('library');
 	const [currentSong, setCurrentSong] = useState<Song | undefined>();
+	const [recentSongs, setRecentSongs] = useState<Song[]>([]);
+	const [resumeSeconds, setResumeSeconds] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [error, setError] = useState<string | undefined>();
@@ -73,6 +77,14 @@ export default function App() {
 				setSongs(nextSongs);
 				setPlaylists(nextPlaylists);
 				setCurrentSong(nextSongs.find((song) => song.id === queue.currentSongId));
+				setResumeSeconds(queue.timestampSeconds);
+				setRecentSongs(
+					queue.historyIds
+						.slice(-8)
+						.reverse()
+						.map((songId) => nextSongs.find((song) => song.id === songId))
+						.filter((song): song is Song => Boolean(song))
+				);
 			} catch (requestError) {
 				setError(
 					requestError instanceof Error ? requestError.message : 'Unable to refresh library.'
@@ -89,6 +101,40 @@ export default function App() {
 			void refresh(session);
 		}
 	}, [refresh, session]);
+
+	useEffect(() => {
+		if (!session || songs.length === 0) {
+			return;
+		}
+
+		const subscriptions = [
+			TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, (event) => {
+				const songId = typeof event.track?.id === 'string' ? event.track.id : undefined;
+				const nextSong = songId ? songs.find((song) => song.id === songId) : undefined;
+
+				if (nextSong) {
+					setCurrentSong(nextSong);
+				}
+
+				void persistNativeQueue(
+					session,
+					songs,
+					event.index ?? 0,
+					event.lastTrack?.id,
+					event.lastPosition
+				);
+			}),
+			TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, (event) => {
+				void persistNativeQueue(session, songs, undefined, undefined, event.position);
+			})
+		];
+
+		return () => {
+			for (const subscription of subscriptions) {
+				subscription.remove();
+			}
+		};
+	}, [session, songs]);
 
 	const isPlaying = useMemo(() => playbackState.state === State.Playing, [playbackState.state]);
 
@@ -158,11 +204,37 @@ export default function App() {
 							onPress={() => playSongs(session, visibleSongs, index, setCurrentSong)}
 						/>
 					)}
+					ListFooterComponent={
+						recentSongs.length > 0 ? (
+							<View style={styles.recentSection}>
+								<Text style={styles.sectionTitle}>Recent history</Text>
+								{recentSongs.map((song, index) => (
+									<SongRow
+										key={song.id}
+										song={song}
+										onPress={() => playSongs(session, recentSongs, index, setCurrentSong)}
+									/>
+								))}
+							</View>
+						) : null
+					}
 					ListHeaderComponent={
 						selectedPlaylist ? (
 							<Pressable style={styles.backRow} onPress={() => setSelectedPlaylist(undefined)}>
 								<Text style={styles.backText}>All songs</Text>
 							</Pressable>
+						) : currentSong ? (
+							<ContinueListening
+								song={currentSong}
+								position={resumeSeconds}
+								onPress={() => {
+									const index = songs.findIndex((song) => song.id === currentSong.id);
+
+									if (index >= 0) {
+										void playSongs(session, songs, index, setCurrentSong, resumeSeconds);
+									}
+								}}
+							/>
 						) : null
 					}
 				/>
@@ -243,6 +315,33 @@ function PlaylistRow({ playlist, onPress }: { playlist: Playlist; onPress: () =>
 	);
 }
 
+function ContinueListening({
+	song,
+	position,
+	onPress
+}: {
+	song: Song;
+	position: number;
+	onPress: () => void;
+}) {
+	return (
+		<View style={styles.continueCard}>
+			<View style={styles.rowText}>
+				<Text style={styles.sectionTitle}>Continue listening</Text>
+				<Text numberOfLines={1} style={styles.rowTitle}>
+					{song.title}
+				</Text>
+				<Text style={styles.rowSubtitle}>
+					{song.artist} at {formatDuration(position)}
+				</Text>
+			</View>
+			<Pressable style={styles.playButton} onPress={onPress}>
+				<Text style={styles.playButtonText}>Resume</Text>
+			</Pressable>
+		</View>
+	);
+}
+
 function PlayerBar({
 	currentSong,
 	isPlaying,
@@ -287,6 +386,7 @@ async function setupPlayer() {
 			android: {
 				appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback
 			},
+			progressUpdateEventInterval: 10,
 			capabilities: [
 				Capability.Play,
 				Capability.Pause,
@@ -305,7 +405,8 @@ async function playSongs(
 	session: MobileSession,
 	songs: Song[],
 	startIndex: number,
-	setCurrentSong: (song: Song) => void
+	setCurrentSong: (song: Song) => void,
+	initialPosition = 0
 ) {
 	const tracks = songs.map((song) => ({
 		id: song.id,
@@ -321,9 +422,57 @@ async function playSongs(
 
 	await TrackPlayer.reset();
 	await TrackPlayer.add(tracks);
-	await TrackPlayer.skip(startIndex);
+	await TrackPlayer.skip(startIndex, initialPosition);
 	setCurrentSong(songs[startIndex]);
+	await persistQueueState(session, songs, startIndex, [], initialPosition);
 	await TrackPlayer.play();
+}
+
+async function persistNativeQueue(
+	session: MobileSession,
+	songs: Song[],
+	activeIndex?: number,
+	lastTrackId?: string | number,
+	position = 0
+) {
+	const currentIndex =
+		activeIndex ??
+		(await TrackPlayer.getActiveTrackIndex()
+			.then((index) => index ?? 0)
+			.catch(() => 0));
+	const previousTrackId = typeof lastTrackId === 'string' ? lastTrackId : undefined;
+
+	await persistQueueState(
+		session,
+		songs,
+		currentIndex,
+		previousTrackId ? [previousTrackId] : [],
+		position
+	);
+}
+
+async function persistQueueState(
+	session: MobileSession,
+	songs: Song[],
+	currentIndex: number,
+	additionalHistoryIds: string[],
+	position: number
+) {
+	const queueIds = songs.map((song) => song.id);
+	const currentSongId = queueIds[currentIndex] ?? null;
+
+	await updateQueue(session, {
+		queueIds,
+		...(additionalHistoryIds.length > 0 ? { historyIds: additionalHistoryIds } : {}),
+		currentSongId,
+		timestampSeconds: Math.max(0, position),
+		volume: 1,
+		repeatMode: 'off',
+		shuffleEnabled: false,
+		shuffledQueueIds: []
+	}).catch(() => {
+		// Playback should stay responsive even when sync is temporarily unavailable.
+	});
 }
 
 function formatDuration(duration: number | null | undefined) {
@@ -419,6 +568,29 @@ const styles = StyleSheet.create({
 	backText: {
 		color: '#34d399',
 		fontWeight: '800'
+	},
+	continueCard: {
+		marginHorizontal: 18,
+		marginBottom: 12,
+		borderRadius: 10,
+		borderWidth: 1,
+		borderColor: '#3f3f46',
+		backgroundColor: '#18181b',
+		padding: 14,
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 12
+	},
+	recentSection: {
+		paddingTop: 16,
+		paddingBottom: 10
+	},
+	sectionTitle: {
+		marginBottom: 8,
+		color: '#34d399',
+		fontSize: 12,
+		fontWeight: '800',
+		textTransform: 'uppercase'
 	},
 	row: {
 		minHeight: 62,

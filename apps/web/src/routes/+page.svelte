@@ -20,6 +20,18 @@
 	type RepeatMode = 'off' | 'playlist' | 'one';
 	type Song = PageData['songs'][number];
 
+	interface RemotePlaybackState {
+		queueIds: string[];
+		historyIds: string[];
+		currentSongId: string | null;
+		timestampSeconds: number;
+		volume: number;
+		repeatMode: string;
+		shuffleEnabled: boolean;
+		shuffledQueueIds: string[];
+		updatedAt: string | null;
+	}
+
 	const ROW_HEIGHT = 60;
 	const OVERSCAN_ROWS = 8;
 
@@ -44,6 +56,8 @@
 	let shuffleEnabled = $state(false);
 	let queuePanelOpen = $state(false);
 	let pendingSeekSeconds = $state(0);
+	let lastPlaybackStateUpdatedAt = $state<string | null>(null);
+	let syncNotice = $state('');
 	let persistTimeout: ReturnType<typeof setTimeout> | undefined;
 
 	const filteredSongs = $derived(filterSongs(data.songs, searchTerm));
@@ -84,6 +98,7 @@
 		volume = data.playbackState.volume;
 		repeatMode = data.playbackState.repeatMode;
 		shuffleEnabled = data.playbackState.shuffleEnabled;
+		lastPlaybackStateUpdatedAt = data.playbackState.updatedAt;
 
 		if (!scrollContainer) {
 			return;
@@ -97,8 +112,16 @@
 
 		const observer = new ResizeObserver(updateViewportHeight);
 		observer.observe(scrollContainer);
+		const syncInterval = window.setInterval(syncPlaybackStateFromServer, 8000);
 
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			window.clearInterval(syncInterval);
+
+			if (persistTimeout) {
+				clearTimeout(persistTimeout);
+			}
+		};
 	});
 
 	function setSort(nextSortKey: SortKey) {
@@ -330,9 +353,21 @@
 					shuffleEnabled,
 					shuffledQueueIds
 				})
-			}).catch(() => {
-				// Playback should continue even if persistence fails.
-			});
+			})
+				.then(async (response) => {
+					if (!response.ok) {
+						return;
+					}
+
+					const payload = (await response.json()) as {
+						playbackState?: { updatedAt?: string | null };
+					};
+					lastPlaybackStateUpdatedAt =
+						payload.playbackState?.updatedAt ?? lastPlaybackStateUpdatedAt;
+				})
+				.catch(() => {
+					// Playback should continue even if persistence fails.
+				});
 		};
 
 		if (immediate) {
@@ -341,6 +376,52 @@
 		}
 
 		persistTimeout = setTimeout(persist, 600);
+	}
+
+	async function syncPlaybackStateFromServer() {
+		if (isPlaying || document.hidden) {
+			return;
+		}
+
+		try {
+			const response = await fetch(resolve('/api/queue'));
+
+			if (!response.ok) {
+				return;
+			}
+
+			const payload = (await response.json()) as { queue?: RemotePlaybackState };
+			const remoteState = payload.queue;
+
+			if (!remoteState?.updatedAt || remoteState.updatedAt === lastPlaybackStateUpdatedAt) {
+				return;
+			}
+
+			applyRemotePlaybackState(remoteState);
+			lastPlaybackStateUpdatedAt = remoteState.updatedAt;
+			syncNotice = 'Synced playback from another device';
+			window.setTimeout(() => {
+				if (syncNotice === 'Synced playback from another device') {
+					syncNotice = '';
+				}
+			}, 4000);
+		} catch {
+			// Cross-device sync is opportunistic and should never interrupt playback.
+		}
+	}
+
+	function applyRemotePlaybackState(remoteState: RemotePlaybackState) {
+		queueIds = validSongIds(remoteState.queueIds, data.songs);
+		historyIds = validSongIds(remoteState.historyIds, data.songs);
+		shuffledQueueIds = validSongIds(remoteState.shuffledQueueIds, data.songs);
+		currentSong = remoteState.currentSongId
+			? (songById.get(remoteState.currentSongId) ?? null)
+			: null;
+		currentTime = remoteState.timestampSeconds;
+		pendingSeekSeconds = remoteState.timestampSeconds;
+		volume = remoteState.volume;
+		repeatMode = normalizeRemoteRepeatMode(remoteState.repeatMode);
+		shuffleEnabled = remoteState.shuffleEnabled;
 	}
 
 	function filterSongs(songs: Song[], query: string) {
@@ -459,6 +540,10 @@
 	function validSongIds(songIds: string[], songs: Song[]) {
 		const validIds = new Set(songs.map((song) => song.id));
 		return songIds.filter((songId) => validIds.has(songId));
+	}
+
+	function normalizeRemoteRepeatMode(value: string): RepeatMode {
+		return value === 'playlist' || value === 'one' ? value : 'off';
 	}
 
 	function createShuffledQueue(songIds: string[], currentSongId?: string | null) {
@@ -594,6 +679,37 @@
 					<div>{sortedSongs.length} shown</div>
 					<div class="hidden sm:block">Click a row to play from your local library.</div>
 				</div>
+
+				{#if syncNotice}
+					<div
+						class="mb-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+					>
+						{syncNotice}
+					</div>
+				{/if}
+
+				{#if currentSong && !isPlaying}
+					<div
+						class="mb-4 flex flex-col gap-3 rounded-md border border-zinc-800 bg-zinc-950 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+					>
+						<div class="min-w-0">
+							<div class="text-xs font-medium tracking-[0.14em] text-emerald-400 uppercase">
+								Continue listening
+							</div>
+							<div class="mt-1 truncate text-sm font-medium text-white">{currentSong.title}</div>
+							<div class="mt-1 truncate text-xs text-zinc-400">
+								{currentSong.artist} at {formatDuration(currentTime)}
+							</div>
+						</div>
+						<button
+							class="h-10 rounded-md bg-emerald-500 px-4 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
+							type="button"
+							onclick={togglePlayback}
+						>
+							Resume
+						</button>
+					</div>
+				{/if}
 
 				<div
 					class="grid h-[calc(100vh-260px)] min-h-96 overflow-hidden rounded-md border border-zinc-800 bg-zinc-950"

@@ -325,17 +325,41 @@ export function getPlaybackState() {
 }
 
 export function updatePlaybackState(payload: PlaybackStatePayload) {
-	const queueIds = stringArray(payload.queueIds);
-	const historyIds = stringArray(payload.historyIds);
-	const currentSongId = typeof payload.currentSongId === 'string' ? payload.currentSongId : null;
-	const timestampSeconds = finiteNumber(payload.timestampSeconds, 0);
-	const volume = clamp(finiteNumber(payload.volume, 0.9), 0, 1);
-	const repeatMode = normalizeRepeatMode(payload.repeatMode);
-	const shuffleEnabled = payload.shuffleEnabled === true;
-	const shuffledQueueIds = stringArray(payload.shuffledQueueIds);
 	const db = openMigratedDatabase();
 
 	try {
+		const current = getPlaybackStateWithOpenDatabase(db);
+		const queueIds =
+			payload.queueIds === undefined ? current.queueIds : stringArray(payload.queueIds);
+		const historyIds =
+			payload.historyIds === undefined ? current.historyIds : stringArray(payload.historyIds);
+		const currentSongId =
+			payload.currentSongId === undefined
+				? current.currentSongId
+				: typeof payload.currentSongId === 'string'
+					? payload.currentSongId
+					: null;
+		const timestampSeconds =
+			payload.timestampSeconds === undefined
+				? current.timestampSeconds
+				: finiteNumber(payload.timestampSeconds, 0);
+		const volume =
+			payload.volume === undefined
+				? current.volume
+				: clamp(finiteNumber(payload.volume, 0.9), 0, 1);
+		const repeatMode =
+			payload.repeatMode === undefined
+				? current.repeatMode
+				: normalizeRepeatMode(payload.repeatMode);
+		const shuffleEnabled =
+			payload.shuffleEnabled === undefined
+				? current.shuffleEnabled
+				: payload.shuffleEnabled === true;
+		const shuffledQueueIds =
+			payload.shuffledQueueIds === undefined
+				? current.shuffledQueueIds
+				: stringArray(payload.shuffledQueueIds);
+
 		db.prepare(
 			`
 				UPDATE playback_state

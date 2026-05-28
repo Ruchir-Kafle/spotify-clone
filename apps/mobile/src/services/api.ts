@@ -71,6 +71,16 @@ export async function fetchQueue(session: MobileSession) {
 	return data.queue;
 }
 
+export async function updateQueue(session: MobileSession, queue: Partial<QueueState>) {
+	const data = await apiRequest<{ queue: QueueState }>(session.serverUrl, '/api/queue', {
+		method: 'PUT',
+		token: session.token,
+		body: JSON.stringify(queue)
+	});
+
+	return data.queue;
+}
+
 export function audioUrl(session: MobileSession, songId: string) {
 	return `${session.serverUrl}/api/songs/${songId}/audio`;
 }

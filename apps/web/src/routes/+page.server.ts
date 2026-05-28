@@ -23,6 +23,7 @@ interface PlaybackStateRow {
 	repeat_mode: 'off' | 'playlist' | 'one';
 	shuffle_enabled: 0 | 1;
 	shuffle_state_json: string | null;
+	updated_at: string;
 }
 
 interface QueueStateJson {
@@ -71,7 +72,8 @@ export function load() {
 						volume,
 						repeat_mode,
 						shuffle_enabled,
-						shuffle_state_json
+						shuffle_state_json,
+						updated_at
 					FROM playback_state
 					WHERE id = 1
 				`
@@ -112,7 +114,8 @@ function normalizePlaybackState(row: PlaybackStateRow | undefined) {
 		volume: row?.volume ?? 0.9,
 		repeatMode: row?.repeat_mode ?? 'off',
 		shuffleEnabled: row?.shuffle_enabled === 1,
-		shuffledQueueIds: stringArray(shuffleState.shuffledQueueIds)
+		shuffledQueueIds: stringArray(shuffleState.shuffledQueueIds),
+		updatedAt: row?.updated_at ?? null
 	};
 }
 
