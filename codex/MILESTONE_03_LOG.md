@@ -15,6 +15,7 @@ Display indexed music in the web app with search, sorting, and virtualization. D
 - Added sortable columns.
 - Added fixed-row virtualization for large libraries.
 - Added empty states for no indexed songs and no search matches.
+- Added a Settings route for changing local music folder configuration.
 
 ## Architecture
 
@@ -71,6 +72,37 @@ The page now includes:
 - no-match empty state
 
 The UI remains scoped to library browsing only. There are no playback controls or fake playback elements.
+
+### Settings View
+
+Added:
+
+```text
+apps/web/src/routes/settings/+page.server.ts
+apps/web/src/routes/settings/+page.svelte
+```
+
+The Settings view manages parsed music folders through SvelteKit form actions.
+
+Configuration storage:
+
+```text
+database/app.db
+```
+
+This file is intentionally ignored by git through the existing `database/*.db` rule.
+
+The Settings route supports:
+
+- listing configured music folders
+- adding a folder path
+- removing a folder path
+- scanning a folder immediately after it is added
+- manually rescanning all configured folders
+- resolving relative folder paths from the workspace root
+- validating that added paths exist and are directories
+
+The current implementation stores local configuration in SQLite for a single local user. This can later be associated with authenticated users when OAuth is implemented.
 
 ## Search
 
@@ -151,3 +183,6 @@ Manual verification:
 - type in the search box and confirm results update immediately
 - click table headers and confirm sorting changes
 - scroll a long list and confirm only the visible rows render
+- open `/settings`
+- add `./media` and confirm it resolves to the root `media` directory
+- remove a folder and confirm it disappears from Settings

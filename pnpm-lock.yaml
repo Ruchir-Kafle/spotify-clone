@@ -20,6 +20,9 @@ importers:
       '@music/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@music/scanner':
+        specifier: workspace:*
+        version: link:../../packages/scanner
     devDependencies:
       '@eslint/compat':
         specifier: ^2.0.4
