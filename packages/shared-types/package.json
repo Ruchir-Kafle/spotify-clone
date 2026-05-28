@@ -1,0 +1,22 @@
+{
+	"name": "@music/shared-types",
+	"version": "0.0.1",
+	"type": "module",
+	"private": true,
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"check": "tsc -p tsconfig.json --noEmit",
+		"format": "prettier --write ."
+	},
+	"devDependencies": {
+		"typescript": "^6.0.2"
+	}
+}

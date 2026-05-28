@@ -1,0 +1,7 @@
+node_modules
+dist
+build
+.svelte-kit
+database/*.db
+media
+pnpm-lock.yaml

@@ -1,0 +1,19 @@
+{
+	"name": "spotify-clone",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"packageManager": "pnpm@10.33.4",
+	"scripts": {
+		"dev": "pnpm --filter @music/web dev",
+		"build": "pnpm --filter @music/shared-types build && pnpm --filter @music/database build && pnpm --filter @music/web build",
+		"check": "pnpm --filter @music/shared-types check && pnpm --filter @music/database check && pnpm --filter @music/web check",
+		"lint": "pnpm --filter @music/web lint",
+		"format": "pnpm --recursive --if-present format",
+		"db:migrate": "pnpm --filter @music/database migrate"
+	},
+	"devDependencies": {
+		"prettier": "^3.8.1",
+		"typescript": "^6.0.2"
+	}
+}

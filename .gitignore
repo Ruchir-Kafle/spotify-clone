@@ -1,0 +1,14 @@
+node_modules
+.svelte-kit
+.vercel
+.output
+dist
+build
+coverage
+.env
+.env.*
+!.env.example
+database/*.db
+database/*.db-*
+media/*
+!media/.gitkeep
