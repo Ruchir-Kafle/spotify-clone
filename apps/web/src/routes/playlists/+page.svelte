@@ -30,6 +30,12 @@
 				>
 					Settings
 				</a>
+				<a
+					class="block rounded-md px-3 py-2 text-zinc-400 hover:bg-zinc-900 hover:text-white"
+					href={resolve('/signout')}
+				>
+					Sign out
+				</a>
 			</nav>
 			<div class="mt-8 border-t border-zinc-800 pt-5 text-sm text-zinc-400">
 				<div class="text-zinc-500">Playlists</div>
