@@ -1,0 +1,22 @@
+[Unit]
+Description=Self-hosted Music Server
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/music-server
+EnvironmentFile=/opt/music-server/apps/web/.env.production
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/pnpm start
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/music-server/database /opt/music-server/media
+
+[Install]
+WantedBy=multi-user.target

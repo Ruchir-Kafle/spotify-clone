@@ -6,6 +6,7 @@
 	"packageManager": "pnpm@10.33.4",
 	"scripts": {
 		"dev": "pnpm --filter @music/web dev",
+		"start": "pnpm --filter @music/web start",
 		"build": "pnpm --filter @music/shared-types build && pnpm --filter @music/database build && pnpm --filter @music/scanner build && pnpm --filter @music/web build",
 		"check": "pnpm --filter @music/shared-types check && pnpm --filter @music/database check && pnpm --filter @music/scanner check && pnpm --filter @music/web check",
 		"lint": "pnpm --filter @music/web lint",
