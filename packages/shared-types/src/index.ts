@@ -15,6 +15,13 @@ export interface Song {
 	updatedAt: string;
 }
 
+export interface MusicDirectory {
+	id: string;
+	path: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export interface Playlist {
 	id: string;
 	name: string;

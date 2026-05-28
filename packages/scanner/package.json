@@ -1,0 +1,32 @@
+{
+	"name": "@music/scanner",
+	"version": "0.0.1",
+	"type": "module",
+	"private": true,
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"bin": {
+		"scanner": "./src/cli.ts"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"check": "tsc -p tsconfig.json --noEmit",
+		"scanner": "tsx src/cli.ts",
+		"format": "prettier --write ."
+	},
+	"dependencies": {
+		"@music/database": "workspace:*",
+		"chokidar": "^5.0.0",
+		"music-metadata": "^11.10.3"
+	},
+	"devDependencies": {
+		"tsx": "^4.21.0",
+		"typescript": "^6.0.2"
+	}
+}

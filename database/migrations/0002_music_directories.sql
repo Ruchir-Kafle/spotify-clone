@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS music_directories (
+	id TEXT PRIMARY KEY,
+	path TEXT NOT NULL UNIQUE,
+	created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS music_directories_path_idx ON music_directories (path);
